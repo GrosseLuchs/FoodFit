@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FoodFit - Подбор сочетаний продуктов</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .container { display: flex; gap: 30px; margin-top: 30px; }
+        .column { flex: 1; padding: 20px; border-radius: 10px; }
+        .good-column { border: 3px solid #2ecc71; background: #f0fff4; }
+        .bad-column { border: 3px solid #e74c3c; background: #fff5f5; }
+        .selected-ingredients { background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+        .ingredient-tag { display: inline-block; background: #3498db; color: white; padding: 5px 15px; margin: 5px; border-radius: 20px; cursor: pointer; transition: background 0.2s; }
+        .ingredient-tag:hover { background: #2980b9; }
+        .pairing-item { padding: 10px; margin: 5px 0; border-radius: 5px; cursor: pointer; }
+        .good-item { background: #d4edda; border-left: 4px solid #28a745; }
+        .bad-item { background: #f8d7da; border-left: 4px solid #dc3545; }
+        button { padding: 10px 20px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #2980b9; }
+        button:disabled { background: #95a5a6; cursor: not-allowed; }
+        .search-box { width: 100%; padding: 10px; font-size: 16px; margin-bottom: 20px; }
+        
+        /* ДОБАВЛЕННЫЕ СТИЛИ */
+        .search-results-list {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 5px;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .search-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            transition: background 0.2s;
+        }
+        .search-item:hover {
+            background: #f5f5f5;
+        }
+        .search-item:last-child {
+            border-bottom: none;
+        }
+        
+        /* ИКОНКИ */
+        .icon {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            margin-right: 5px;
+            vertical-align: middle;
+            background-size: contain;
+            background-repeat: no-repeat;
+        }
+        .icon-cook {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%2328a745' d='M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zm-9 14H7v-2h3v2zm0-4H7v-2h3v2zm0-4H7V7h3v2zm4 8h-3v-2h3v2zm0-4h-3v-2h3v2zm0-4h-3V7h3v2z'/%3E%3C/svg%3E");
+        }
+        .icon-serve {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%2317a2b8' d='M8.1 13.34l2.83-2.83L3.91 3.5c-1.56 1.56-1.56 4.09 0 5.66l4.19 4.18zm6.78-1.81c1.53.71 3.68.21 5.27-1.38 1.91-1.91 2.28-4.65.81-6.12-1.46-1.46-4.2-1.1-6.12.81-1.59 1.59-2.09 3.74-1.38 5.27L3.7 19.87l1.41 1.41L12 14.41l6.88 6.88 1.41-1.41L13.41 13l1.47-1.47z'/%3E%3C/svg%3E");
+        }
+    </style>
+</head>
+<body>
+    <h1>🍽️ FoodFit - Умный подбор сочетаний продуктов</h1>
+    
+    <div class="selected-ingredients">
+        <h3>Выбранные продукты:</h3>
+        <div id="selected-list"></div>
+    </div>
+    
+    <input type="text" id="search-input" class="search-box" placeholder="Начните вводить название продукта...">
+    <div id="search-results"></div>
+    
+    <div class="container">
+        <div class="column good-column">
+            <h2>✅ Хорошо сочетается</h2>
+            <div id="good-list"></div>
+        </div>
+        <div class="column bad-column">
+            <h2>❌ Плохо сочетается</h2>
+            <div id="bad-list"></div>
+        </div>
+    </div>
+    
+    <div style="margin-top: 30px; text-align: center;">
+        <button id="generate-btn" disabled>✨ Сгенерировать рецепт</button>
+    </div>
+    
+    <div id="recipe-result" style="margin-top: 30px; display: none;">
+        <h2>📝 Ваш рецепт:</h2>
+        <div id="recipe-content"></div>
+    </div>
+    
+    <script>
+        // Основные переменные
+        let selectedIngredients = []; // Массив объектов {id, name}
+        let searchTimeout;
+
+        // Функция для получения CSRF токена
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        const csrftoken = getCookie('csrftoken');
+
+        // Обработчик поиска с debounce
+        document.getElementById('search-input').addEventListener('input', function(e) {
+            const query = e.target.value.trim();
+            
+            // Очищаем предыдущий таймер
+            clearTimeout(searchTimeout);
+            
+            // Если запрос слишком короткий, сразу очищаем результаты
+            if (query.length < 2) {
+                document.getElementById('search-results').innerHTML = '';
+                return;
+            }
+            
+            // Устанавливаем новый таймер (ждем 300мс после последней клавиши)
+            searchTimeout = setTimeout(async () => {
+                console.log(`Поиск: "${query}" (дебаунс сработал)`);
+                try {
+                    const response = await fetch(`/api/search/?search=${encodeURIComponent(query)}`);
+                    const data = await response.json();
+                    
+                    // Безопасное отображение результатов
+                    displaySearchResults(data);
+                    
+                } catch (error) {
+                    console.error('Ошибка поиска:', error);
+                }
+            }, 300);
+        });
+        
+        // Функция добавления ингредиента
+        window.addIngredient = function(ingredientId, ingredientName) {
+            if (!selectedIngredients.some(item => item.id === ingredientId)) {
+                selectedIngredients.push({
+                    id: ingredientId,
+                    name: ingredientName || `Ингредиент ${ingredientId}`
+                });
+                updateSelectedList();
+                getRecommendations();
+                document.getElementById('search-input').value = '';
+                
+                // Безопасное очищение результатов поиска
+                const searchResults = document.getElementById('search-results');
+                while (searchResults.firstChild) {
+                    searchResults.removeChild(searchResults.firstChild);
+                }
+            }
+        };
+        
+        // Функция удаления ингредиента
+        window.removeIngredient = function(ingredientId) {
+            selectedIngredients = selectedIngredients.filter(ing => ing.id !== ingredientId);
+            updateSelectedList();
+            getRecommendations();
+        };
+        
+        // Функция для безопасного отображения результатов поиска
+        function displaySearchResults(data) {
+            const container = document.getElementById('search-results');
+            container.innerHTML = '';
+            
+            if (data.length === 0) return;
+            
+            const list = document.createElement('div');
+            list.className = 'search-results-list';
+            
+            data.forEach(ingredient => {
+                console.log('Ингредиент из поиска:', ingredient); // Отладка
+                
+                const item = document.createElement('div');
+                item.className = 'search-item';
+                
+                // Создаем основной текст
+                const textSpan = document.createElement('span');
+                textSpan.textContent = `${ingredient.display_name} `;
+                
+                // Создаем маленькую иконку информации
+                const infoIcon = document.createElement('span');
+                infoIcon.textContent = 'ℹ️';
+                infoIcon.style.cssText = 'font-size: 0.8em; cursor: help; margin-left: 5px;';
+                infoIcon.title = getNutritionInfo(ingredient);
+                
+                textSpan.appendChild(infoIcon);
+                item.appendChild(textSpan);
+                
+                // Категория
+                const categorySpan = document.createElement('span');
+                categorySpan.style.cssText = 'color: #666; font-size: 0.9em;';
+                categorySpan.textContent = ` (${ingredient.category_name || 'без категории'})`;
+                item.appendChild(categorySpan);
+                
+                // Обработчик клика
+                item.onclick = () => addIngredient(ingredient.id, ingredient.display_name);
+                
+                list.appendChild(item);
+            });
+            
+            container.appendChild(list);
+        }
+
+        // Функция для форматирования информации о питательной ценности
+        function getNutritionInfo(ingredient) {
+            let info = '';
+            
+            if (ingredient.calories) {
+                info += `Калории: ${ingredient.calories} ккал\n`;
+            }
+            if (ingredient.protein) {
+                info += `Белки: ${ingredient.protein} г\n`;
+            }
+            if (ingredient.fat) {
+                info += `Жиры: ${ingredient.fat} г\n`;
+            }
+            if (ingredient.carbohydrates) {
+                info += `Углеводы: ${ingredient.carbohydrates} г\n`;
+            }
+            if (ingredient.fiber) {
+                info += `Клетчатка: ${ingredient.fiber} г\n`;
+            }
+            // Вариант 2: allergen теперь строка (например: "F2 - Молоко коровье")
+            if (ingredient.allergen) {
+                info += `Аллерген: ${ingredient.allergen}`;
+            }
+            
+            return info || 'Нет данных о пищевой ценности';
+        }
+
+        // Обновление списка выбранных
+        function updateSelectedList() {
+            const container = document.getElementById('selected-list');
+            
+            while (container.firstChild) {
+                container.removeChild(container.firstChild);
+            }
+            
+            if (selectedIngredients.length === 0) {
+                const em = document.createElement('em');
+                em.textContent = 'Нет выбранных ингредиентов';
+                container.appendChild(em);
+            } else {
+                // Загружаем полные данные для выбранных ингредиентов
+                loadSelectedIngredientsDetails();
+            }
+            
+            document.getElementById('generate-btn').disabled = selectedIngredients.length === 0;
+        }
+
+        // Функция для загрузки деталей выбранных ингредиентов
+        async function loadSelectedIngredientsDetails() {
+            console.log('Загружаем детали выбранных ингредиентов');
+            if (selectedIngredients.length === 0) return;
+            
+            const ids = selectedIngredients.map(ing => ing.id).join(',');
+            
+            try {
+                const response = await fetch(`/api/recommendations/?ingredient_ids=${ids}`);
+                
+                // Проверяем статус ответа
+                if (!response.ok) {
+                    throw new Error(`Ошибка HTTP: ${response.status}`);
+                }
+                
+                // Читаем данные один раз
+                const data = await response.json();
+                console.log('Данные выбранных ингредиентов:', data.selected_ingredients);
+                
+                const container = document.getElementById('selected-list');
+                
+                data.selected_ingredients.forEach(ing => {
+                    const wrapper = document.createElement('div');
+                    wrapper.style.cssText = 'display: inline-block; margin: 5px;';
+                    
+                    const tag = document.createElement('span');
+                    tag.className = 'ingredient-tag';
+                    tag.textContent = ing.display_name;
+                    
+                    // Добавляем иконку информации
+                    const infoIcon = document.createElement('span');
+                    infoIcon.textContent = 'ℹ️';
+                    infoIcon.style.cssText = 'font-size: 0.8em; cursor: help; margin-left: 5px;';
+                    infoIcon.title = getNutritionInfo(ing);
+                    
+                    // Кнопка удаления
+                    const removeBtn = document.createElement('span');
+                    removeBtn.textContent = ' ×';
+                    removeBtn.style.cssText = 'cursor: pointer; font-weight: bold;';
+                    removeBtn.onclick = () => removeIngredient(ing.id);
+                    
+                    tag.appendChild(infoIcon);
+                    tag.appendChild(removeBtn);
+                    wrapper.appendChild(tag);
+                    container.appendChild(wrapper);
+                });
+                
+            } catch (error) {
+                console.error('Ошибка загрузки деталей:', error);
+                // Fallback: показываем без деталей
+                const container = document.getElementById('selected-list');
+                selectedIngredients.forEach(ing => {
+                    const tag = document.createElement('span');
+                    tag.className = 'ingredient-tag';
+                    tag.textContent = `${ing.name} ×`;
+                    tag.onclick = () => removeIngredient(ing.id);
+                    container.appendChild(tag);
+                });
+            }
+        }
+        
+        // Получение рекомендаций
+        async function getRecommendations() {
+            if (selectedIngredients.length === 0) {
+                const goodList = document.getElementById('good-list');
+                const badList = document.getElementById('bad-list');
+                
+                // Безопасное создание текста
+                const goodEm = document.createElement('em');
+                goodEm.textContent = 'Выберите ингредиент';
+                goodList.innerHTML = '';
+                goodList.appendChild(goodEm);
+                
+                const badEm = document.createElement('em');
+                badEm.textContent = 'Выберите ингредиент';
+                badList.innerHTML = '';
+                badList.appendChild(badEm);
+                
+                return;
+            }
+            
+            try {
+                const ids = selectedIngredients.map(ing => ing.id).join(',');
+                const response = await fetch(`/api/recommendations/?ingredient_ids=${ids}`);
+                const data = await response.json();
+                
+                // Отображаем хорошие сочетания
+                const goodList = document.getElementById('good-list');
+                goodList.innerHTML = '';
+                
+                // Для готовки
+                if (data.good_for_cooking && data.good_for_cooking.length > 0) {
+                    const cookHeader = document.createElement('h4');
+                    cookHeader.innerHTML = '<span class="icon icon-cook"></span> Для готовки:';
+                    goodList.appendChild(cookHeader);
+                    
+                    data.good_for_cooking.forEach(ing => {
+                        const item = document.createElement('div');
+                        item.className = 'pairing-item good-item';
+                        
+                        const nameSpan = document.createElement('span');
+                        nameSpan.textContent = ing.display_name;
+                        
+                        const button = document.createElement('button');
+                        button.style.cssText = 'float: right;';
+                        button.textContent = '+ Добавить';
+                        
+                        button.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            addIngredient(ing.id, ing.display_name);
+                        });
+                        
+                        item.appendChild(nameSpan);
+                        item.appendChild(button);
+                        goodList.appendChild(item);
+                    });
+                }
+                
+                // Для подачи
+                if (data.good_for_serving && data.good_for_serving.length > 0) {
+                    const serveHeader = document.createElement('h4');
+                    serveHeader.innerHTML = '<span class="icon icon-serve"></span> Для подачи:';
+                    goodList.appendChild(serveHeader);
+                    
+                    data.good_for_serving.forEach(ing => {
+                        const item = document.createElement('div');
+                        item.className = 'pairing-item good-item';
+                        
+                        const nameSpan = document.createElement('span');
+                        nameSpan.textContent = ing.display_name;
+                        
+                        const button = document.createElement('button');
+                        button.style.cssText = 'float: right;';
+                        button.textContent = '+ Добавить';
+                        
+                        button.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            addIngredient(ing.id, ing.display_name);
+                        });
+                        
+                        item.appendChild(nameSpan);
+                        item.appendChild(button);
+                        goodList.appendChild(item);
+                    });
+                }
+                
+                if (!goodList.hasChildNodes()) {
+                    const em = document.createElement('em');
+                    em.textContent = 'Нет хороших сочетаний';
+                    goodList.appendChild(em);
+                }
+                
+                // Отображаем плохие сочетания
+                const badList = document.getElementById('bad-list');
+                badList.innerHTML = '';
+                
+                if (data.bad && data.bad.length > 0) {
+                    data.bad.forEach(ing => {
+                        const item = document.createElement('div');
+                        item.className = 'pairing-item bad-item';
+                        item.textContent = ing.display_name;
+                        badList.appendChild(item);
+                    });
+                } else {
+                    const em = document.createElement('em');
+                    em.textContent = 'Нет плохих сочетаний';
+                    badList.appendChild(em);
+                }
+                
+            } catch (error) {
+                console.error('Ошибка получения рекомендаций:', error);
+                
+                const goodList = document.getElementById('good-list');
+                goodList.innerHTML = '';
+                const goodError = document.createElement('em');
+                goodError.textContent = 'Ошибка загрузки';
+                goodList.appendChild(goodError);
+                
+                const badList = document.getElementById('bad-list');
+                badList.innerHTML = '';
+                const badError = document.createElement('em');
+                badError.textContent = 'Ошибка загрузки';
+                badList.appendChild(badError);
+            }
+        }
+        
+        // Генерация рецепта с AI
+        document.getElementById('generate-btn').addEventListener('click', async function() {
+            if (selectedIngredients.length === 0) return;
+            
+            console.log('Начало генерации рецепта');
+            console.log('selectedIngredients:', selectedIngredients);
+            
+            // Показываем индикатор загрузки
+            const generateBtn = document.getElementById('generate-btn');
+            const originalText = generateBtn.textContent;
+            generateBtn.textContent = '✨ Генерирую рецепт...';
+            generateBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/generate_recipe/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: JSON.stringify({
+                        ingredient_ids: selectedIngredients.map(ing => ing.id)
+                    })
+                });
+                
+                if (response.ok) {
+                    const recipe = await response.json();
+                    console.log('Получен рецепт:', recipe);
+                    console.log('Тип recipe.ingredients:', typeof recipe.ingredients);
+                    console.log('recipe.ingredients:', recipe.ingredients);
+                    
+                    // Очищаем контейнер для рецепта
+                    const recipeContainer = document.getElementById('recipe-content');
+                    recipeContainer.innerHTML = '';
+                    
+                    // Создаем контейнер для рецепта
+                    const recipeDiv = document.createElement('div');
+                    recipeDiv.style.cssText = 'background: white; padding: 30px; border-radius: 15px; border: 2px solid #3498db; box-shadow: 0 5px 15px rgba(0,0,0,0.1);';
+                    
+                    // Заголовок
+                    const headerDiv = document.createElement('div');
+                    headerDiv.style.cssText = 'background: linear-gradient(135deg, #3498db, #2ecc71); color: white; padding: 20px; border-radius: 10px 10px 0 0; margin: -30px -30px 20px -30px;';
+                    
+                    const title = document.createElement('h3');
+                    title.style.cssText = 'margin: 0; font-size: 24px;';
+                    title.textContent = recipe.title || 'Рецепт от AI-шефа';
+                    
+                    const time = document.createElement('p');
+                    time.style.cssText = 'margin: 5px 0 0 0; opacity: 0.9;';
+                    time.textContent = `⏱️ ${recipe.time || '30 минут'}`;
+                    
+                    headerDiv.appendChild(title);
+                    headerDiv.appendChild(time);
+                    recipeDiv.appendChild(headerDiv);
+                    
+                    // Основной контент
+                    const contentDiv = document.createElement('div');
+                    contentDiv.style.cssText = 'display: flex; gap: 30px; margin-top: 20px;';
+                    
+                    // Ингредиенты
+                    const ingredientsCol = document.createElement('div');
+                    ingredientsCol.style.flex = '1';
+                    
+                    const ingredientsHeader = document.createElement('h4');
+                    ingredientsHeader.style.cssText = 'color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 5px;';
+                    ingredientsHeader.textContent = '📋 Ингредиенты:';
+                    
+                    const ingredientsList = document.createElement('ul');
+                    ingredientsList.style.cssText = 'padding-left: 20px; color: #34495e;';
+                    
+                    if (Array.isArray(recipe.ingredients)) {
+                        recipe.ingredients.forEach(ing => {
+                            const li = document.createElement('li');
+                            li.textContent = ing;
+                            ingredientsList.appendChild(li);
+                        });
+                    } else {
+                        const li = document.createElement('li');
+                        li.textContent = recipe.ingredients || 'Ингредиенты не указаны';
+                        ingredientsList.appendChild(li);
+                    }
+                    
+                    ingredientsCol.appendChild(ingredientsHeader);
+                    ingredientsCol.appendChild(ingredientsList);
+                    
+                    // Инструкции
+                    const instructionsCol = document.createElement('div');
+                    instructionsCol.style.flex = '2';
+                    
+                    const instructionsHeader = document.createElement('h4');
+                    instructionsHeader.style.cssText = 'color: #2c3e50; border-bottom: 2px solid #2ecc71; padding-bottom: 5px;';
+                    instructionsHeader.textContent = '👨‍🍳 Приготовление:';
+                    
+                    const instructionsDiv = document.createElement('div');
+                    instructionsDiv.style.cssText = 'background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #2ecc71;';
+                    
+                    if (recipe.instructions) {
+                        const paragraphs = recipe.instructions.split('\n');
+                        paragraphs.forEach(p => {
+                            const paragraph = document.createElement('p');
+                            paragraph.textContent = p;
+                            instructionsDiv.appendChild(paragraph);
+                        });
+                    } else {
+                        const paragraph = document.createElement('p');
+                        paragraph.textContent = 'Инструкции не предоставлены';
+                        instructionsDiv.appendChild(paragraph);
+                    }
+                    
+                    instructionsCol.appendChild(instructionsHeader);
+                    instructionsCol.appendChild(instructionsDiv);
+                    
+                    // Советы
+                    if (recipe.tips) {
+                        const tipsHeader = document.createElement('h4');
+                        tipsHeader.style.cssText = 'color: #2c3e50; margin-top: 20px; border-bottom: 2px solid #e74c3c; padding-bottom: 5px;';
+                        tipsHeader.textContent = '💡 Советы шефа:';
+                        
+                        const tipsDiv = document.createElement('div');
+                        tipsDiv.style.cssText = 'background: #fff5f5; padding: 15px; border-radius: 8px; border-left: 4px solid #e74c3c; color: #c0392b;';
+                        tipsDiv.textContent = recipe.tips;
+                        
+                        instructionsCol.appendChild(tipsHeader);
+                        instructionsCol.appendChild(tipsDiv);
+                    }
+                    
+                    contentDiv.appendChild(ingredientsCol);
+                    contentDiv.appendChild(instructionsCol);
+                    recipeDiv.appendChild(contentDiv);
+                    
+                    // Футер
+                    const footer = document.createElement('div');
+                    footer.style.cssText = 'margin-top: 20px; padding-top: 15px; border-top: 1px dashed #ddd; font-size: 12px; color: #7f8c8d; text-align: center;';
+                    footer.textContent = '🍳 Рецепт сгенерирован AI-шефом на основе выбранных ингредиентов';
+                    
+                    recipeDiv.appendChild(footer);
+                    recipeContainer.appendChild(recipeDiv);
+                    document.getElementById('recipe-result').style.display = 'block';
+                    
+                    // Плавная прокрутка к рецепту
+                    document.getElementById('recipe-result').scrollIntoView({ 
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                    
+                } else {
+                    throw new Error('Ошибка сервера');
+                }
+                
+            } catch (error) {
+                console.error('Ошибка генерации рецепта:', error);
+                
+                // Показываем fallback рецепт
+                const ingredientNames = selectedIngredients.map(ing => ing.name);
+                const recipeContainer = document.getElementById('recipe-content');
+                recipeContainer.innerHTML = '';
+                
+                const errorDiv = document.createElement('div');
+                errorDiv.style.cssText = 'background: #fff5f5; padding: 20px; border-radius: 10px; border: 1px solid #e74c3c;';
+                
+                const errorTitle = document.createElement('h3');
+                errorTitle.textContent = `Блюдо из ${ingredientNames[0] || 'ингредиентов'}`;
+                
+                const errorMsg = document.createElement('p');
+                errorMsg.innerHTML = '<strong>⚠️ AI временно недоступен, вот базовый рецепт:</strong>';
+                
+                const ingredientsP = document.createElement('p');
+                ingredientsP.innerHTML = `<strong>Ингредиенты:</strong><br>${ingredientNames.map(ing => `• ${ing}`).join('<br>')}`;
+                
+                const instructionsP = document.createElement('p');
+                instructionsP.innerHTML = '<strong>Приготовление:</strong><br>1. Подготовьте ингредиенты.<br>2. Приготовьте по своему вкусу.<br>3. Наслаждайтесь!';
+                
+                errorDiv.appendChild(errorTitle);
+                errorDiv.appendChild(errorMsg);
+                errorDiv.appendChild(ingredientsP);
+                errorDiv.appendChild(instructionsP);
+                
+                recipeContainer.appendChild(errorDiv);
+                document.getElementById('recipe-result').style.display = 'block';
+                
+            } finally {
+                // Восстанавливаем кнопку
+                generateBtn.textContent = originalText;
+                generateBtn.disabled = false;
+            }
+        });
+        
+        // Инициализация
+        updateSelectedList();
+        getRecommendations();
+    </script>
+</body>
+</html>
