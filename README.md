@@ -1,62 +1,65 @@
-# 🍽️ FoodFit - Умный помощник для сочетаний продуктов и генерации рецептов
+# 🍽️ FoodFit — Умный помощник для сочетания продуктов и генерации рецептов
 
 [![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://python.org)
-[![Django](https://img.shields.io/badge/Django-6.0-green.svg)](https://djangoproject.com)
+[![Django](https://img.shields.io/badge/Django-5.1-green.svg)](https://djangoproject.com)
 [![DRF](https://img.shields.io/badge/DRF-3.16.1-red.svg)](https://www.django-rest-framework.org)
+[![CI](https://github.com/GrosseLuchs/FoodFit/actions/workflows/ci.yml/badge.svg)](https://github.com/GrosseLuchs/FoodFit/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**FoodFit** — это веб-приложение для подбора оптимальных сочетаний продуктов с генерацией рецептов через искусственный интеллект. Проект демонстрирует навыки fullstack-разработки на Python/Django.
+**FoodFit** — веб-приложение для подбора оптимальных сочетаний продуктов и генерации рецептов с помощью YandexGPT.  
+Проект демонстрирует навыки fullstack-разработки на Python/Django, работу с REST API, кэширование и CI/CD.
 
 ## ✨ Возможности
 
-- 🔍 **Умный поиск** ингредиентов с автодополнением
-- 🤝 **Система рекомендаций** сочетаемости продуктов
-- 🍳 **Разделение по типам** приготовления (для готовки / для подачи)
-- 📊 **Отображение КБЖУ** и информации об аллергенах
-- 🤖 **Генерация рецептов** с помощью YandexGPT AI
-- 📱 **Адаптивный интерфейс** для любых устройств
+- 🔍 **Умный поиск** ингредиентов с автодополнением  
+- 🤝 **Система рекомендаций** сочетаемости продуктов  
+- 🍳 **Разделение по типам** (для готовки / для подачи)  
+- 📊 **Отображение КБЖУ** и информации об аллергенах  
+- 🤖 **Генерация рецептов** через YandexGPT  
+- 📱 **Адаптивный интерфейс** для любых устройств  
 
 ## 🏗️ Технологический стек
 
-**Backend:**
-- Python 3.12
-- Django 6.0
-- Django REST Framework 3.16.1
-- SQLite / PostgreSQL (production)
-- Django Caching Framework
+**Backend:**  
+- Python 3.12  
+- Django 5.1  
+- Django REST Framework 3.16.1  
+- SQLite (разработка) / PostgreSQL (продакшн)  
+- Django Caching Framework  
 
-**Frontend:**
-- Чистый JavaScript (ES6+)
-- HTML5 + CSS3
-- Fetch API для коммуникации
-- Без использования фреймворков (vanilla JS)
+**Frontend:**  
+- Чистый JavaScript (ES6+)  
+- HTML5 + CSS3  
+- Fetch API  
+- Без сторонних фреймворков (vanilla JS)  
 
-**Инфраструктура:**
-- Git для контроля версий
-- dotenv для конфигурации
-- requests для HTTP-запросов
+**Инфраструктура / DevOps:**  
+- Git + GitHub Actions (CI)  
+- pytest + pytest-django  
+- flake8 (PEP8)  
+- dotenv для конфигурации  
+- requests для HTTP-запросов  
 
 ## 🚀 Быстрый старт
 
 ### Предварительные требования
-- Python 3.10+
-- pip (менеджер пакетов Python)
-- Git
+- Python 3.10+  
+- pip  
+- Git  
 
 ### Установка
 
-1. **Клонирование репозитория:**
-(используйте bash)
-
-git clone https://github.com/GrosseLuchs/foodfit.git
-cd foodfit
+1. **Клонирование репозитория**  
+   ```bash
+   git clone https://github.com/GrosseLuchs/foodfit.git
+   cd foodfit/foodfit_project
 
 2. **Создание виртуального окружения:**
 
 python -m venv venv
-source venv/bin/activate  # Linux/Mac
+source venv/bin/activate      # Linux/Mac
 # или
-venv\Scripts\activate  # Windows
+venv\Scripts\activate         # Windows
 
 3. **Установка зависимостей:**
 
@@ -64,9 +67,11 @@ pip install -r requirements.txt
 
 4. **Настройка переменных окружения:**
 Создайте файл .env в корне проекта с указанием следующих переменных:
-SECRET_KEY=your-secret-key-here
-YANDEX_API_KEY=your-yandex-api-key
-YANDEX_FOLDER_ID=your-yandex-folder-id
+SECRET_KEY=ваш-секретный-ключ-django
+YANDEX_API_KEY=ваш-api-ключ-yandex-gpt
+YANDEX_FOLDER_ID=ваш-folder-id
+DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1
 
 5. **Миграции базы данных:**
 
@@ -83,26 +88,48 @@ python manage.py runserver
 
 Приложение будет доступно по адресу: http://localhost:8000
 
+## 🧪 Тестирование
+
+Для запуска тестов используйте pytest:
+
+'''bash
+pytest
+
+Для проверки стиля кода (flake8):
+
+'''bash
+flake8 .
+
 ### Структура проекта:
 
-foodfit_project/
-├── backend/           # Основное приложение с моделями и бизнес-логикой
-│   ├── models.py     # Модели данных (Ingredient, Category, Pairing, Allergen)
-│   ├── utils.py      # Алгоритмы рекомендаций (оптимизированные)
-│   └── admin.py      # Конфигурация админ-панели
-├── api/              # REST API эндпоинты
-│   ├── serializers.py # Сериализаторы DRF
-│   └── views.py      # API представления
-├── frontend/         # Пользовательский интерфейс
-│   ├── templates/    # HTML шаблоны
-│   └── views.py      # Контроллеры Django
-├── services/         # Интеграции с внешними сервисами
-│   ├── ai_integration.py  # Главный сервис AI
-│   ├── yandex_gpt_client.py # Клиент YandexGPT
-│   └── recipe_parser.py    # Парсер рецептов
-└── foodfit_project/  # Настройки проекта
-    ├── settings.py   # Основные настройки
-    └── urls.py       # Маршруты URL
+foodfit_project/                # Корень проекта
+├── backend/                    # Модели и бизнес-логика
+│   ├── models.py               # Ingredient, Category, Allergen, Pairing
+│   ├── utils.py                # Алгоритмы рекомендаций
+│   └── admin.py                # Настройка админ-панели
+├── api/                        # REST API
+│   ├── serializers.py          # Сериализаторы DRF
+│   └── views.py                # API-эндпоинты
+├── frontend/                   # Пользовательский интерфейс
+│   ├── templates/              # HTML-шаблоны
+│   └── views.py                # Контроллеры Django
+├── services/                   # Интеграция с внешними сервисами
+│   ├── ai_integration.py       # Главный AI-сервис
+│   ├── yandex_gpt_client.py    # Клиент YandexGPT
+│   └── recipe_parser.py        # Парсер ответов GPT
+├── foodfit_project/            # Настройки проекта
+│   ├── settings.py
+│   └── urls.py
+├── tests/                      # Тесты (pytest)
+│   ├── test_models.py
+│   ├── test_api.py
+│   ├── test_utils.py
+│   └── conftest.py
+├── .github/workflows/          # CI/CD (GitHub Actions)
+├── .flake8                     # Конфигурация flake8
+├── pytest.ini                  # Настройки pytest
+├── requirements.txt
+└── manage.py
 
 ## ⚡ Оптимизации производительности
 
@@ -137,7 +164,7 @@ foodfit_project/
 - Модерация пользовательского контента
 
 ### Планы на будущее:
-1. Возможность регистрации пользователейна платформе
+1. Возможность регистрации пользователей на платформе
 2. Возможность добавления ингридиентов зарегистрированными пользователями
 3. Возможность сохранять понравившийся рецепт зарегистрированным пользователям
 4. Реализация рейтинга для рецептов
@@ -155,6 +182,6 @@ foodfit_project/
 
 ## 📞 Контакты
 
-Александр Островский - [GitHub](https://github.com/GrosseLuchs) - ostrovsky.alexander@email.com
+Александр Островский - [GitHub](https://github.com/GrosseLuchs) - ostrovsky.alexander@gmail.com
 
 Проект: [https://github.com/GrosseLuchs/foodfit](https://github.com/GrosseLuchs/foodfit)

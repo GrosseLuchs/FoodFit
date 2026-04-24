@@ -1,11 +1,14 @@
+import logging
 from django.db.models import Q
 from rest_framework.response import Response
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.decorators import api_view
 from rest_framework import status
 from backend.utils import get_recommendations_by_type
 from backend.models import Ingredient
 from api.serializers import IngredientSerializer, RecipeGenerationSerializer
+from services.ai_integration import generate_recipe_ai
+
+logger = logging.getLogger('foodfit')
 
 
 @api_view(['GET'])
@@ -23,27 +26,39 @@ def get_pairing_recommendations(request):
         )
 
     try:
-        ingredient_ids_list = [int(id.strip()) for id in ingredient_ids.split(',')]
+        ingredient_ids_list = [
+            int(id.strip()) for id in ingredient_ids.split(',')
+        ]
     except ValueError:
         return Response(
             {'error': 'Неверный формат ingredient_ids'},
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    # Используем оптимизированную функцию
-    recommendations = get_recommendations_by_type(ingredient_ids_list, pairing_type)
+    recommendations = get_recommendations_by_type(
+        ingredient_ids_list, pairing_type
+    )
 
-    # Сериализуем данные
+    # Выбранные ингредиенты загружаем с категориями и аллергенами
+    selected_ingredients = (
+        Ingredient.objects.filter(id__in=ingredient_ids_list)
+        .select_related('category', 'allergen')
+    )
     serializer = IngredientSerializer
 
     result = {
         'selected_ingredients': serializer(
-            Ingredient.objects.filter(id__in=ingredient_ids_list),
-            many=True
+            selected_ingredients, many=True
         ).data,
-        'good_for_cooking': serializer(recommendations['good']['cook'], many=True).data,
-        'good_for_serving': serializer(recommendations['good']['serve'], many=True).data,
-        'bad': serializer(recommendations['bad'], many=True).data
+        'good_for_cooking': serializer(
+            recommendations['good']['cook'], many=True
+        ).data,
+        'good_for_serving': serializer(
+            recommendations['good']['serve'], many=True
+        ).data,
+        'bad': serializer(
+            recommendations['bad'], many=True
+        ).data
     }
 
     return Response(result)
@@ -63,11 +78,13 @@ def search_ingredients(request):
     serializer = IngredientSerializer(ingredients, many=True)
     return Response(serializer.data)
 
+
 @api_view(['POST'])
 def generate_recipe_api(request):
-    """Генерация рецепта из выбранных ингредиентов с помощью AI"""
+    """
+    Генерация рецепта из выбранных ингредиентов с помощью AI.
+    """
     serializer = RecipeGenerationSerializer(data=request.data)
-
     if not serializer.is_valid():
         return Response(
             {'error': 'Неверные данные', 'details': serializer.errors},
@@ -76,23 +93,29 @@ def generate_recipe_api(request):
 
     ingredient_ids = serializer.validated_data['ingredient_ids']
 
-    # Получаем ингредиенты с категориями
-    ingredients = Ingredient.objects.filter(id__in=ingredient_ids).select_related('category')
+    ingredients = Ingredient.objects.filter(
+        id__in=ingredient_ids
+    ).select_related('category')
     ingredient_names = [ing.title for ing in ingredients]
-    category_names = [ing.category.name if ing.category else 'Другое' for ing in ingredients]
+    category_names = [
+        ing.category.name if ing.category else 'Другое'
+        for ing in ingredients
+    ]
 
-    # Генерируем рецепт через AI
     try:
-        from services.ai_integration import generate_recipe_ai
         recipe = generate_recipe_ai(ingredient_names, category_names)
-    except Exception as e:
-        print(f"Ошибка при генерации рецепта: {e}")
-        recipe = {
-            "title": f"Блюдо из {len(ingredient_names)} ингредиентов",
-            "time": "30 минут",
-            "ingredients": ingredient_names,
-            "instructions": "1. Подготовьте все ингредиенты.\n2. Приготовьте по своему вкусу.\n3. Подавайте и наслаждайтесь!",
-            "tips": "Экспериментируйте со специями и пропорциями!"
-        }
 
-    return Response(recipe)
+        if recipe.get('_error', False):
+            logger.warning("AI service unavailable, returning fallback")
+            return Response(
+                recipe, status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+
+        return Response(recipe)
+
+    except Exception:
+        logger.exception("Unexpected error in recipe generation")
+        return Response(
+            {'error': 'Внутренняя ошибка сервера'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

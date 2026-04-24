@@ -21,8 +21,7 @@
         button:hover { background: #2980b9; }
         button:disabled { background: #95a5a6; cursor: not-allowed; }
         .search-box { width: 100%; padding: 10px; font-size: 16px; margin-bottom: 20px; }
-        
-        /* ДОБАВЛЕННЫЕ СТИЛИ */
+
         .search-results-list {
             border: 1px solid #ddd;
             border-radius: 5px;
@@ -45,7 +44,6 @@
             border-bottom: none;
         }
         
-        /* ИКОНКИ */
         .icon {
             display: inline-block;
             width: 20px;
@@ -95,11 +93,9 @@
     </div>
     
     <script>
-        // Основные переменные
-        let selectedIngredients = []; // Массив объектов {id, name}
+        let selectedIngredients = [];
         let searchTimeout;
 
-        // Функция для получения CSRF токена
         function getCookie(name) {
             let cookieValue = null;
             if (document.cookie && document.cookie !== '') {
@@ -117,27 +113,22 @@
         
         const csrftoken = getCookie('csrftoken');
 
-        // Обработчик поиска с debounce
         document.getElementById('search-input').addEventListener('input', function(e) {
             const query = e.target.value.trim();
             
-            // Очищаем предыдущий таймер
             clearTimeout(searchTimeout);
             
-            // Если запрос слишком короткий, сразу очищаем результаты
             if (query.length < 2) {
                 document.getElementById('search-results').innerHTML = '';
                 return;
             }
             
-            // Устанавливаем новый таймер (ждем 300мс после последней клавиши)
             searchTimeout = setTimeout(async () => {
                 console.log(`Поиск: "${query}" (дебаунс сработал)`);
                 try {
                     const response = await fetch(`/api/search/?search=${encodeURIComponent(query)}`);
                     const data = await response.json();
                     
-                    // Безопасное отображение результатов
                     displaySearchResults(data);
                     
                 } catch (error) {
@@ -146,7 +137,6 @@
             }, 300);
         });
         
-        // Функция добавления ингредиента
         window.addIngredient = function(ingredientId, ingredientName) {
             if (!selectedIngredients.some(item => item.id === ingredientId)) {
                 selectedIngredients.push({
@@ -157,7 +147,6 @@
                 getRecommendations();
                 document.getElementById('search-input').value = '';
                 
-                // Безопасное очищение результатов поиска
                 const searchResults = document.getElementById('search-results');
                 while (searchResults.firstChild) {
                     searchResults.removeChild(searchResults.firstChild);
@@ -165,14 +154,12 @@
             }
         };
         
-        // Функция удаления ингредиента
         window.removeIngredient = function(ingredientId) {
             selectedIngredients = selectedIngredients.filter(ing => ing.id !== ingredientId);
             updateSelectedList();
             getRecommendations();
         };
         
-        // Функция для безопасного отображения результатов поиска
         function displaySearchResults(data) {
             const container = document.getElementById('search-results');
             container.innerHTML = '';
@@ -188,11 +175,9 @@
                 const item = document.createElement('div');
                 item.className = 'search-item';
                 
-                // Создаем основной текст
                 const textSpan = document.createElement('span');
                 textSpan.textContent = `${ingredient.display_name} `;
                 
-                // Создаем маленькую иконку информации
                 const infoIcon = document.createElement('span');
                 infoIcon.textContent = 'ℹ️';
                 infoIcon.style.cssText = 'font-size: 0.8em; cursor: help; margin-left: 5px;';
@@ -201,13 +186,12 @@
                 textSpan.appendChild(infoIcon);
                 item.appendChild(textSpan);
                 
-                // Категория
                 const categorySpan = document.createElement('span');
                 categorySpan.style.cssText = 'color: #666; font-size: 0.9em;';
                 categorySpan.textContent = ` (${ingredient.category_name || 'без категории'})`;
                 item.appendChild(categorySpan);
                 
-                // Обработчик клика
+
                 item.onclick = () => addIngredient(ingredient.id, ingredient.display_name);
                 
                 list.appendChild(item);
@@ -216,7 +200,6 @@
             container.appendChild(list);
         }
 
-        // Функция для форматирования информации о питательной ценности
         function getNutritionInfo(ingredient) {
             let info = '';
             
@@ -235,7 +218,6 @@
             if (ingredient.fiber) {
                 info += `Клетчатка: ${ingredient.fiber} г\n`;
             }
-            // Вариант 2: allergen теперь строка (например: "F2 - Молоко коровье")
             if (ingredient.allergen) {
                 info += `Аллерген: ${ingredient.allergen}`;
             }
@@ -243,7 +225,6 @@
             return info || 'Нет данных о пищевой ценности';
         }
 
-        // Обновление списка выбранных
         function updateSelectedList() {
             const container = document.getElementById('selected-list');
             
@@ -256,14 +237,12 @@
                 em.textContent = 'Нет выбранных ингредиентов';
                 container.appendChild(em);
             } else {
-                // Загружаем полные данные для выбранных ингредиентов
                 loadSelectedIngredientsDetails();
             }
             
             document.getElementById('generate-btn').disabled = selectedIngredients.length === 0;
         }
 
-        // Функция для загрузки деталей выбранных ингредиентов
         async function loadSelectedIngredientsDetails() {
             console.log('Загружаем детали выбранных ингредиентов');
             if (selectedIngredients.length === 0) return;
@@ -273,12 +252,11 @@
             try {
                 const response = await fetch(`/api/recommendations/?ingredient_ids=${ids}`);
                 
-                // Проверяем статус ответа
+
                 if (!response.ok) {
                     throw new Error(`Ошибка HTTP: ${response.status}`);
                 }
-                
-                // Читаем данные один раз
+
                 const data = await response.json();
                 console.log('Данные выбранных ингредиентов:', data.selected_ingredients);
                 
@@ -292,13 +270,11 @@
                     tag.className = 'ingredient-tag';
                     tag.textContent = ing.display_name;
                     
-                    // Добавляем иконку информации
                     const infoIcon = document.createElement('span');
                     infoIcon.textContent = 'ℹ️';
                     infoIcon.style.cssText = 'font-size: 0.8em; cursor: help; margin-left: 5px;';
                     infoIcon.title = getNutritionInfo(ing);
-                    
-                    // Кнопка удаления
+
                     const removeBtn = document.createElement('span');
                     removeBtn.textContent = ' ×';
                     removeBtn.style.cssText = 'cursor: pointer; font-weight: bold;';
@@ -312,7 +288,6 @@
                 
             } catch (error) {
                 console.error('Ошибка загрузки деталей:', error);
-                // Fallback: показываем без деталей
                 const container = document.getElementById('selected-list');
                 selectedIngredients.forEach(ing => {
                     const tag = document.createElement('span');
@@ -324,13 +299,11 @@
             }
         }
         
-        // Получение рекомендаций
         async function getRecommendations() {
             if (selectedIngredients.length === 0) {
                 const goodList = document.getElementById('good-list');
                 const badList = document.getElementById('bad-list');
                 
-                // Безопасное создание текста
                 const goodEm = document.createElement('em');
                 goodEm.textContent = 'Выберите ингредиент';
                 goodList.innerHTML = '';
@@ -349,11 +322,9 @@
                 const response = await fetch(`/api/recommendations/?ingredient_ids=${ids}`);
                 const data = await response.json();
                 
-                // Отображаем хорошие сочетания
                 const goodList = document.getElementById('good-list');
                 goodList.innerHTML = '';
                 
-                // Для готовки
                 if (data.good_for_cooking && data.good_for_cooking.length > 0) {
                     const cookHeader = document.createElement('h4');
                     cookHeader.innerHTML = '<span class="icon icon-cook"></span> Для готовки:';
@@ -381,7 +352,6 @@
                     });
                 }
                 
-                // Для подачи
                 if (data.good_for_serving && data.good_for_serving.length > 0) {
                     const serveHeader = document.createElement('h4');
                     serveHeader.innerHTML = '<span class="icon icon-serve"></span> Для подачи:';
@@ -415,7 +385,6 @@
                     goodList.appendChild(em);
                 }
                 
-                // Отображаем плохие сочетания
                 const badList = document.getElementById('bad-list');
                 badList.innerHTML = '';
                 
@@ -449,14 +418,12 @@
             }
         }
         
-        // Генерация рецепта с AI
         document.getElementById('generate-btn').addEventListener('click', async function() {
             if (selectedIngredients.length === 0) return;
             
             console.log('Начало генерации рецепта');
             console.log('selectedIngredients:', selectedIngredients);
             
-            // Показываем индикатор загрузки
             const generateBtn = document.getElementById('generate-btn');
             const originalText = generateBtn.textContent;
             generateBtn.textContent = '✨ Генерирую рецепт...';
@@ -480,15 +447,12 @@
                     console.log('Тип recipe.ingredients:', typeof recipe.ingredients);
                     console.log('recipe.ingredients:', recipe.ingredients);
                     
-                    // Очищаем контейнер для рецепта
                     const recipeContainer = document.getElementById('recipe-content');
                     recipeContainer.innerHTML = '';
                     
-                    // Создаем контейнер для рецепта
                     const recipeDiv = document.createElement('div');
                     recipeDiv.style.cssText = 'background: white; padding: 30px; border-radius: 15px; border: 2px solid #3498db; box-shadow: 0 5px 15px rgba(0,0,0,0.1);';
                     
-                    // Заголовок
                     const headerDiv = document.createElement('div');
                     headerDiv.style.cssText = 'background: linear-gradient(135deg, #3498db, #2ecc71); color: white; padding: 20px; border-radius: 10px 10px 0 0; margin: -30px -30px 20px -30px;';
                     
@@ -504,11 +468,9 @@
                     headerDiv.appendChild(time);
                     recipeDiv.appendChild(headerDiv);
                     
-                    // Основной контент
                     const contentDiv = document.createElement('div');
                     contentDiv.style.cssText = 'display: flex; gap: 30px; margin-top: 20px;';
                     
-                    // Ингредиенты
                     const ingredientsCol = document.createElement('div');
                     ingredientsCol.style.flex = '1';
                     
@@ -534,7 +496,6 @@
                     ingredientsCol.appendChild(ingredientsHeader);
                     ingredientsCol.appendChild(ingredientsList);
                     
-                    // Инструкции
                     const instructionsCol = document.createElement('div');
                     instructionsCol.style.flex = '2';
                     
@@ -560,8 +521,7 @@
                     
                     instructionsCol.appendChild(instructionsHeader);
                     instructionsCol.appendChild(instructionsDiv);
-                    
-                    // Советы
+
                     if (recipe.tips) {
                         const tipsHeader = document.createElement('h4');
                         tipsHeader.style.cssText = 'color: #2c3e50; margin-top: 20px; border-bottom: 2px solid #e74c3c; padding-bottom: 5px;';
@@ -587,8 +547,7 @@
                     recipeDiv.appendChild(footer);
                     recipeContainer.appendChild(recipeDiv);
                     document.getElementById('recipe-result').style.display = 'block';
-                    
-                    // Плавная прокрутка к рецепту
+
                     document.getElementById('recipe-result').scrollIntoView({ 
                         behavior: 'smooth',
                         block: 'start'
@@ -600,8 +559,7 @@
                 
             } catch (error) {
                 console.error('Ошибка генерации рецепта:', error);
-                
-                // Показываем fallback рецепт
+
                 const ingredientNames = selectedIngredients.map(ing => ing.name);
                 const recipeContainer = document.getElementById('recipe-content');
                 recipeContainer.innerHTML = '';
@@ -630,13 +588,11 @@
                 document.getElementById('recipe-result').style.display = 'block';
                 
             } finally {
-                // Восстанавливаем кнопку
                 generateBtn.textContent = originalText;
                 generateBtn.disabled = false;
             }
         });
         
-        // Инициализация
         updateSelectedList();
         getRecommendations();
     </script>
