@@ -144,7 +144,7 @@ Desktop.ini
 logs/
 
 # GitHub Actions
-.github/
+#github/
 
 # Coverage and reports
 .coverage*
