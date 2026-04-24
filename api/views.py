@@ -1,8 +1,11 @@
 import logging
-from django.db.models import Q
+from django.conf import settings
+from django.db import models
+from django.db.models import Q, Func
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
+
 from backend.utils import get_recommendations_by_type
 from backend.models import Ingredient
 from api.serializers import IngredientSerializer, RecipeGenerationSerializer
@@ -66,15 +69,45 @@ def get_pairing_recommendations(request):
 
 @api_view(['GET'])
 def search_ingredients(request):
-    """Поиск ингредиентов по названию"""
+    """
+    Поиск ингредиентов по названию.
+    Для PostgreSQL используется unaccent + lower.
+    Для SQLite — обычный icontains.
+    """
     query = request.GET.get('search', '').strip()
     if len(query) < 2:
         return Response([])
 
-    ingredients = Ingredient.objects.filter(
-        Q(title__icontains=query) | Q(display_name__icontains=query)
-    ).select_related('category', 'allergen')[:10]
+    db_engine = settings.DATABASES['default']['ENGINE']
+    is_postgres = 'postgresql' in db_engine
 
+    if is_postgres:
+        ingredients = Ingredient.objects.annotate(
+            title_norm=Func(
+                Func('title',
+                     function='unaccent',
+                     output_field=models.TextField()
+                     ),
+                function='LOWER'
+            ),
+            display_norm=Func(
+                Func('display_name',
+                     function='unaccent',
+                     output_field=models.TextField()
+                     ),
+                function='LOWER'
+            )
+        ).filter(
+            Q(title_norm__icontains=query.lower()) |
+            Q(display_norm__icontains=query.lower())
+        )
+    else:
+        # SQLite и другие: простой регистронезависимый поиск
+        ingredients = Ingredient.objects.filter(
+            Q(title__icontains=query) | Q(display_name__icontains=query)
+        )
+
+    ingredients = ingredients.select_related('category', 'allergen')[:10]
     serializer = IngredientSerializer(ingredients, many=True)
     return Response(serializer.data)
 

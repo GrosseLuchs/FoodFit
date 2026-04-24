@@ -55,50 +55,84 @@
    cd foodfit/foodfit_project
 
 2. **Создание виртуального окружения:**
-
-python -m venv venv
-source venv/bin/activate      # Linux/Mac
-# или
-venv\Scripts\activate         # Windows
+   ```bash
+   python -m venv venv
+   source venv/bin/activate      # Linux/Mac
+   # или
+   venv\Scripts\activate         # Windows
 
 3. **Установка зависимостей:**
-
-pip install -r requirements.txt
+   ```bash
+   pip install -r requirements.txt
 
 4. **Настройка переменных окружения:**
 Создайте файл .env в корне проекта с указанием следующих переменных:
-SECRET_KEY=ваш-секретный-ключ-django
-YANDEX_API_KEY=ваш-api-ключ-yandex-gpt
-YANDEX_FOLDER_ID=ваш-folder-id
-DEBUG=True
-ALLOWED_HOSTS=localhost,127.0.0.1
+
+   ```bash
+   SECRET_KEY=ваш-секретный-ключ-django
+   YANDEX_API_KEY=ваш-api-ключ-yandex-gpt
+   YANDEX_FOLDER_ID=ваш-folder-id
+   DEBUG=True
+   ALLOWED_HOSTS=localhost,127.0.0.1
+   ```
 
 5. **Миграции базы данных:**
-
-python manage.py makemigrations
-python manage.py migrate
+   ```bash
+   python manage.py makemigrations
+   python manage.py migrate
+   ```
 
 6.  **Создание суперпользователя:**
-
-python manage.py createsuperuser
+   ```bash
+   python manage.py createsuperuser
+   ```
 
 7.  **Запуск сервера разработки:**
-
-python manage.py runserver
+   ```bash
+   python manage.py runserver
+   ```
 
 Приложение будет доступно по адресу: http://localhost:8000
 
+### База данных
+
+По умолчанию проект использует **SQLite** (файл `db.sqlite3`). Это удобно для локального запуска без дополнительной настройки
+и демонстрации работы функционала.
+
+Если вы хотите использовать **PostgreSQL** (например, для продакшена или тестирования), выполните следующие шаги:
+
+1. Установите PostgreSQL и создайте базу данных.
+
+2. Установите переменную окружения `DATABASE_URL`:
+
+   ```bash
+   DATABASE_URL=postgres://user:password@localhost:5432/foodfit
+   ```
+
+3. Установите расширение unaccent в PostgreSQL:
+
+   ```sql
+   CREATE EXTENSION IF NOT EXISTS unaccent;
+   ```
+
+4. Выполните миграции:
+   ```bash
+   python manage.py migrate
+   ```
+
 ## 🧪 Тестирование
 
-Для запуска тестов используйте pytest:
+1. Для запуска тестов используйте pytest:
 
-'''bash
-pytest
+   ```bash
+   pytest
+   ```
 
-Для проверки стиля кода (flake8):
+2. Для проверки стиля кода (flake8):
 
-'''bash
-flake8 .
+   ```bash
+   flake8 .
+   ```
 
 ### Структура проекта:
 
@@ -165,7 +199,7 @@ foodfit_project/                # Корень проекта
 
 ### Планы на будущее:
 1. Возможность регистрации пользователей на платформе
-2. Возможность добавления ингридиентов зарегистрированными пользователями
+2. Возможность добавления ингредиентов зарегистрированными пользователями
 3. Возможность сохранять понравившийся рецепт зарегистрированным пользователям
 4. Реализация рейтинга для рецептов
 5. Возможность сохранения рецепта в нужном формате (txt, pdf, html)
@@ -182,6 +216,6 @@ foodfit_project/                # Корень проекта
 
 ## 📞 Контакты
 
-Александр Островский - [GitHub](https://github.com/GrosseLuchs) - ostrovsky.alexander@gmail.com
+Александр Островский - [GitHub](https://github.com/GrosseLuchs) - ostrovskii.alexandr@gmail.com
 
 Проект: [https://github.com/GrosseLuchs/foodfit](https://github.com/GrosseLuchs/foodfit)
